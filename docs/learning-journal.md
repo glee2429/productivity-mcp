@@ -58,6 +58,46 @@ The `app_lifespan()` async context manager in `db.py` handles the database lifec
 - The composition root (`server.py`) is intentionally thin — it's just wiring, not logic
 - Schema initialization is idempotent (`CREATE TABLE IF NOT EXISTS`)
 
+## Multi-Server Composition: Productivity MCP + Google Calendar MCP
+
+### How it works
+
+Each MCP server is a specialized capability that Claude can call. When both are connected, Claude composes tools across them in a single conversation:
+
+```
+User: "Check my calendar for tomorrow and create tasks for anything I need to prep for"
+
+Claude's internal flow:
+  1. gcal_list_events(tomorrow)        ← Google Calendar MCP
+  2. Sees "Product Review" meeting
+  3. create_task("Prep slides for Product Review", due=tomorrow)  ← Productivity MCP
+  4. Sees "1:1 with manager"
+  5. create_task("Write status update for 1:1", due=tomorrow)     ← Productivity MCP
+```
+
+Neither server knows about the other. Claude reads from one and writes to the other.
+
+### Why two servers instead of one?
+
+**Separation of concerns.** Each server does one thing well:
+
+| | Google Calendar MCP | Productivity MCP |
+|---|---|---|
+| **Data source** | Google Calendar API (real events) | Local SQLite (tasks, notes, local events) |
+| **Auth** | OAuth with Google | None needed |
+| **Strength** | Real calendar data, invites, RSVP, free/busy | Fast local CRUD, no API limits, works offline |
+| **You control** | Nothing (it's your Google data) | Everything (schema, logic, data) |
+
+### Advantages of multi-server composition
+
+1. **Composability** — This is Pattern 1 applied at the server level. Small, focused servers compose better than one monolithic server. You can swap, add, or remove servers independently.
+2. **No API key in your code** — The productivity MCP doesn't need Google credentials. It stays simple and portable. Anyone can clone the repo and use it without a Google account.
+3. **Offline resilience** — Tasks and notes work without internet. Google Calendar needs connectivity.
+4. **The LLM is the glue** — Instead of writing brittle integration code between Google Calendar and a task manager, you let Claude decide how to connect them based on natural language. This is more flexible than any hardcoded integration.
+5. **Extensibility** — Want Slack notifications? Add a Slack MCP server. Want GitHub issues? Add a GitHub MCP. Each is independent, and Claude composes across all of them.
+
+This is essentially the **microservices pattern applied to AI tooling** — each MCP server is a small, focused service, and the LLM acts as the integration layer.
+
 ## Summary Table
 
 | Pattern | What it teaches | Where to look |

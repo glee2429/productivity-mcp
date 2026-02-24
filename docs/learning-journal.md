@@ -77,6 +77,28 @@ Claude's internal flow:
 
 Neither server knows about the other. Claude reads from one and writes to the other.
 
+### Example: Scheduling a task onto your real calendar
+
+```
+User: "I need to do 30 minutes of physical therapy today. Find a slot in my calendar."
+
+Claude's internal flow:
+  1. create_task("Physical therapy", priority="high", due_date="2026-02-24")
+       ← Productivity MCP (tracks what you need to do)
+  2. gcal_list_events(today)
+       ← Google Calendar MCP (sees your real commitments)
+  3. gcal_find_my_free_time(today)
+       ← Google Calendar MCP (finds gaps between events)
+  4. Suggests: "You have a 3-hour gap from 4–7 PM, want me to block off 4:00–4:30?"
+  5. gcal_create_event("Physical therapy", 4:00–4:30 PM)
+       ← Google Calendar MCP (reserves the time)
+  6. complete_task(task_id)
+       ← Productivity MCP (marks it as scheduled)
+```
+
+The local MCP tracks *what* you need to do. Google Calendar tracks *when* you're busy.
+Claude connects the two — no integration code required.
+
 ### Why two servers instead of one?
 
 **Separation of concerns.** Each server does one thing well:
